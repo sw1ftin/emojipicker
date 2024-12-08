@@ -3,9 +3,19 @@
   "start_with_windows": false,
   "minimize_to_tray": true,
   "paste_delay_ms": 100,
-  "font": { "family": "Segoe UI", "size": 13 },
+  "default_template": "Hidden Character",
+  "font": {
+    "family": "Segoe UI",
+    "size": 13
+  },
   "custom_templates": [
-    { "name": "URL Only", "template": "{url}" },
-    { "name": "Hidden Character", "template": "[\u2800]({url})" }
+    {
+      "name": "URL Only",
+      "template": "{url}"
+    },
+    {
+      "name": "Hidden Character",
+      "template": "[\u2800]({url})"
+    }
   ]
 }

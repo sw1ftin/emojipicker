@@ -400,3 +400,5 @@ FodyWeavers.xsd
 # EmojiPicker specific
 cache/
 *.exe
+dist/
+build/

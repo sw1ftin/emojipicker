@@ -27,7 +27,7 @@ class AddEmojiWindow(ctk.CTkToplevel):
     def __init__(self, parent, category=None):
         super().__init__(parent)
         self.title("Add Emoji")
-        self.geometry("300x200")
+        self.geometry("400x300")
         self.resizable(False, False)
         
         # Name Frame
@@ -180,7 +180,7 @@ class SettingsWindow(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.title("Settings")
-        self.geometry("350x450")
+        self.geometry("500x600")
         self.resizable(False, False)
         
         self.parent = parent
@@ -205,47 +205,63 @@ class SettingsWindow(ctk.CTkToplevel):
         general_frame = self.tabview.tab("General")
         
         # Hotkey
-        hotkey_label = ctk.CTkLabel(general_frame, text="Hotkey:", font=self.window_font)
-        hotkey_label.pack(anchor="w", pady=(0, 5))
+        hotkey_frame = ctk.CTkFrame(general_frame)
+        hotkey_frame.pack(fill="x", padx=10, pady=(10, 5))
         
-        self.hotkey_entry = ctk.CTkEntry(general_frame, font=self.window_font)
-        self.hotkey_entry.pack(fill="x", pady=(0, 10))
-        self.hotkey_entry.insert(0, self.parent.settings.get("hotkey", "ctrl+shift+e"))
+        hotkey_label = ctk.CTkLabel(hotkey_frame, text="Hotkey:", font=self.window_font)
+        hotkey_label.pack(side="left", padx=5)
+        
+        self.hotkey_var = ctk.StringVar(value=self.parent.settings.get("hotkey", "ctrl+shift+e"))
+        self.hotkey_entry = ctk.CTkEntry(hotkey_frame, textvariable=self.hotkey_var, font=self.window_font)
+        self.hotkey_entry.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # Startup option
+        self.startup_var = ctk.BooleanVar(value=self.parent.settings.get("start_with_windows", False))
+        startup_cb = ctk.CTkCheckBox(general_frame, text="Start with Windows", 
+                                   variable=self.startup_var, font=self.window_font)
+        startup_cb.pack(fill="x", padx=10, pady=5)
+        
+        # Minimize to tray option
+        self.minimize_var = ctk.BooleanVar(value=self.parent.settings.get("minimize_to_tray", True))
+        minimize_cb = ctk.CTkCheckBox(general_frame, text="Minimize to tray", 
+                                    variable=self.minimize_var, font=self.window_font)
+        minimize_cb.pack(fill="x", padx=10, pady=5)
         
         # Paste delay
-        delay_label = ctk.CTkLabel(general_frame, text="Paste delay (ms):", font=self.window_font)
-        delay_label.pack(anchor="w", pady=(0, 5))
+        delay_frame = ctk.CTkFrame(general_frame)
+        delay_frame.pack(fill="x", padx=10, pady=5)
         
-        self.delay_entry = ctk.CTkEntry(general_frame, font=self.window_font)
-        self.delay_entry.pack(fill="x", pady=(0, 10))
-        self.delay_entry.insert(0, str(self.parent.settings.get("paste_delay_ms", 100)))
+        delay_label = ctk.CTkLabel(delay_frame, text="Paste delay (ms):", font=self.window_font)
+        delay_label.pack(side="left", padx=5)
         
-        # Start with Windows
-        self.start_with_windows_var = tk.BooleanVar(value=self.parent.settings.get("start_with_windows", False))
-        start_with_windows_cb = ctk.CTkCheckBox(
-            general_frame,
-            text="Start with Windows",
-            variable=self.start_with_windows_var,
-            font=self.window_font
-        )
-        start_with_windows_cb.pack(anchor="w", pady=5)
-        
-        # Minimize to tray
-        self.minimize_to_tray_var = tk.BooleanVar(value=self.parent.settings.get("minimize_to_tray", True))
-        minimize_to_tray_cb = ctk.CTkCheckBox(
-            general_frame,
-            text="Minimize to tray",
-            variable=self.minimize_to_tray_var,
-            font=self.window_font
-        )
-        minimize_to_tray_cb.pack(anchor="w", pady=5)
+        self.delay_var = ctk.StringVar(value=str(self.parent.settings.get("paste_delay_ms", 100)))
+        delay_entry = ctk.CTkEntry(delay_frame, textvariable=self.delay_var, font=self.window_font)
+        delay_entry.pack(side="left", fill="x", expand=True, padx=5)
         
         # Templates Tab
         templates_frame = self.tabview.tab("Templates")
         
+        # Default template selection
+        default_template_frame = ctk.CTkFrame(templates_frame)
+        default_template_frame.pack(fill="x", padx=10, pady=(10, 5))
+        
+        default_template_label = ctk.CTkLabel(default_template_frame, text="Default Template:", font=self.window_font)
+        default_template_label.pack(side="left", padx=5)
+        
+        self.default_template_var = ctk.StringVar(value=self.parent.settings.get("default_template", "URL Only"))
+        self.default_template_menu = ctk.CTkOptionMenu(
+            default_template_frame,
+            variable=self.default_template_var,
+            values=[template["name"] for template in self.parent.settings.get("custom_templates", [])],
+            font=self.window_font
+        )
+        self.default_template_menu.pack(side="left", fill="x", expand=True, padx=5)
+        
         # Template list
-        self.template_frame = ctk.CTkScrollableFrame(templates_frame)
-        self.template_frame.pack(fill="both", expand=True, pady=(0, 10))
+        self.template_list = []
+        for template in self.parent.settings.get("custom_templates", []):
+            template_frame = self.create_template_frame(templates_frame, template)
+            self.template_list.append(template_frame)
         
         # Add template button
         add_template_btn = ctk.CTkButton(
@@ -254,10 +270,7 @@ class SettingsWindow(ctk.CTkToplevel):
             command=self.add_template,
             font=self.window_font
         )
-        add_template_btn.pack(fill="x")
-        
-        # Load existing templates
-        self.load_templates()
+        add_template_btn.pack(fill="x", padx=10, pady=10)
         
         # Appearance Tab
         appearance_frame = self.tabview.tab("Appearance")
@@ -292,6 +305,52 @@ class SettingsWindow(ctk.CTkToplevel):
         save_btn = ctk.CTkButton(self, text="Save", command=self.save_settings, font=self.window_font)
         save_btn.pack(side="bottom", pady=10)
 
+    def create_template_frame(self, parent, template):
+        frame = ctk.CTkFrame(parent)
+        frame.pack(fill="x", padx=10, pady=2)
+        
+        name_label = ctk.CTkLabel(frame, text="Name:", font=self.window_font)
+        name_label.pack(side="left", padx=5)
+        
+        name_entry = ctk.CTkEntry(frame, placeholder_text="Template name", font=self.window_font)
+        name_entry.insert(0, template["name"])
+        name_entry.pack(side="left", padx=5)
+        
+        template_label = ctk.CTkLabel(frame, text="Template:", font=self.window_font)
+        template_label.pack(side="left", padx=5)
+        
+        template_entry = ctk.CTkEntry(frame, placeholder_text="Template", font=self.window_font)
+        template_entry.insert(0, template["template"])
+        template_entry.pack(side="left", padx=5, expand=True, fill="x")
+        
+        delete_btn = ctk.CTkButton(
+            frame,
+            text="✕",
+            width=30,
+            command=lambda idx=len(self.template_list): self.delete_template(idx),
+            font=self.window_font
+        )
+        delete_btn.pack(side="right", padx=5)
+        
+        return frame
+
+    def add_template(self):
+        templates = self.parent.settings.get("custom_templates", [])
+        templates.append({
+            "name": "New Template",
+            "template": "{url}",
+            "is_default": False
+        })
+        self.parent.settings["custom_templates"] = templates
+        self.load_templates()
+
+    def delete_template(self, idx):
+        templates = self.parent.settings.get("custom_templates", [])
+        if len(templates) > 1:
+            del templates[idx]
+            self.parent.settings["custom_templates"] = templates
+            self.load_templates()
+
     def load_templates(self):
         for widget in self.template_frame.winfo_children():
             widget.destroy()
@@ -322,30 +381,14 @@ class SettingsWindow(ctk.CTkToplevel):
             
             self.template_vars.append((name_entry, template_entry))
 
-    def add_template(self):
-        templates = self.parent.settings.get("custom_templates", [])
-        templates.append({
-            "name": "New Template",
-            "template": "{url}",
-            "is_default": False
-        })
-        self.parent.settings["custom_templates"] = templates
-        self.load_templates()
-
-    def delete_template(self, idx):
-        templates = self.parent.settings.get("custom_templates", [])
-        if len(templates) > 1:
-            del templates[idx]
-            self.parent.settings["custom_templates"] = templates
-            self.load_templates()
-
     def save_settings(self):
         # Get current settings
         settings = {
-            "hotkey": self.hotkey_entry.get(),
-            "start_with_windows": self.start_with_windows_var.get(),
-            "minimize_to_tray": self.minimize_to_tray_var.get(),
-            "paste_delay_ms": int(self.delay_entry.get()),
+            "hotkey": self.hotkey_var.get(),
+            "start_with_windows": self.startup_var.get(),
+            "minimize_to_tray": self.minimize_var.get(),
+            "paste_delay_ms": int(self.delay_var.get()),
+            "default_template": self.default_template_var.get(),
             "font": {
                 "family": self.font_family_var.get(),
                 "size": int(self.font_size_var.get())
@@ -354,18 +397,32 @@ class SettingsWindow(ctk.CTkToplevel):
         }
         
         # Save templates
-        for name_entry, template_entry in self.template_vars:
-            settings["custom_templates"].append({
+        for template_frame in self.template_list:
+            name_entry = template_frame.winfo_children()[1]
+            template_entry = template_frame.winfo_children()[3]
+            template = {
                 "name": name_entry.get(),
                 "template": template_entry.get()
-            })
+            }
+            settings["custom_templates"].append(template)
+        
+        # Save to file
+        with open(self.parent.settings_file, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
         
         # Update parent settings
+        old_hotkey = self.parent.settings.get("hotkey")
         self.parent.settings = settings
-        self.parent.save_settings()
+        
+        # Update parent configuration
+        if old_hotkey != settings["hotkey"]:
+            self.parent.update_hotkey(settings["hotkey"])
         
         # Update font
-        self.parent.update_font()
+        self.parent.default_font = ctk.CTkFont(
+            family=settings["font"]["family"],
+            size=settings["font"]["size"]
+        )
         
         # Close window
         self.destroy()
@@ -393,22 +450,46 @@ class EmojiPicker(ctk.CTk):
         self.withdraw()  # Hide window initially
         
         # Create system tray
-        self.create_tray()
+        self.create_system_tray()
+        
+        # Initialize variables
+        self.emoji_buttons = []
+        self.current_focus = -1
+        self.preview_photo = None
+        
+        # Register hotkey
+        self.register_hotkey()
         
         # Create UI
         self.create_ui()
         
-        # Register hotkey
-        keyboard.add_hotkey(self.settings["hotkey"], self.show_window)
-        
-        # Store emoji buttons
-        self.emoji_buttons = []
-        self.current_focus = -1
-        
-        # Display emojis
-        self.display_emojis()
+        # Center window
+        self.center_window()
+    
+    def register_hotkey(self):
+        try:
+            hotkey = self.settings.get("hotkey", "ctrl+shift+e")
+            keyboard.add_hotkey(hotkey, self.on_hotkey)
+        except Exception as e:
+            print(f"Failed to register hotkey: {e}")
+    
+    def unregister_hotkey(self):
+        try:
+            hotkey = self.settings.get("hotkey")
+            if hotkey:
+                keyboard.remove_hotkey(hotkey)
+        except Exception as e:
+            print(f"Failed to unregister hotkey: {e}")
+    
+    def update_hotkey(self, new_hotkey):
+        self.unregister_hotkey()
+        self.settings["hotkey"] = new_hotkey
+        self.register_hotkey()
+    
+    def on_hotkey(self):
+        self.toggle_window()
 
-    def create_tray(self):
+    def create_system_tray(self):
         icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.ico")
         
         menu = pystray.Menu(
@@ -469,26 +550,26 @@ class EmojiPicker(ctk.CTk):
                 json.dump(default_emojis, f, indent=4)
             return default_emojis
 
-    def display_emojis(self, search_term=""):
+    def display_emojis(self, emojis=None):
         # Clear existing emojis
         for widget in self.emoji_frame.winfo_children():
             widget.destroy()
-        
-        self.emoji_buttons = []
-        row = col = 0
+            
+        # Calculate grid layout
         max_cols = 5
         
         # Get all emojis from the list
-        all_emojis = self.emojis.get("emojis", [])
-            
-        # Filter emojis if search term exists
-        filtered_emojis = [
-            emoji for emoji in all_emojis
-            if not search_term or self.emoji_matches_search(emoji, search_term)
-        ]
+        all_emojis = emojis if emojis is not None else self.emojis.get("emojis", [])
         
         # Display emojis in grid
-        for emoji in filtered_emojis:
+        row = 0
+        col = 0
+        self.emoji_buttons = []
+        
+        for emoji in all_emojis:
+            if isinstance(emoji, str):
+                continue  # Skip if emoji is just a string
+                
             photo = self.load_emoji_image(emoji["url"])
             
             button = ctk.CTkButton(
@@ -499,14 +580,15 @@ class EmojiPicker(ctk.CTk):
                 height=50,
                 command=lambda e=emoji: self.select_emoji(e)
             )
-            button.grid(row=row, column=col, padx=2, pady=2)
-            button.emoji = emoji
+            button.image = photo
+            button.emoji = emoji  # Store emoji data in button
             
-            # Bind hover events
+            # Bind events
             button.bind("<Enter>", lambda e, em=emoji: self.show_emoji_preview(em))
             button.bind("<Leave>", self.hide_emoji_preview)
             button.bind("<Button-3>", lambda e, em=emoji, b=button: self.show_context_menu(e, em, b))
             
+            button.grid(row=row, column=col, padx=2, pady=2)
             self.emoji_buttons.append(button)
             
             col += 1
@@ -515,14 +597,14 @@ class EmojiPicker(ctk.CTk):
                 row += 1
         
         # Add "+" button at the end if not searching
-        if not search_term:
+        if emojis is None:
             if col == 0:
                 current_row = row
                 current_col = col
             else:
                 current_row = row
                 current_col = col
-            
+                
             add_button = ctk.CTkButton(
                 self.emoji_frame,
                 text="+",
@@ -533,9 +615,10 @@ class EmojiPicker(ctk.CTk):
             add_button.grid(row=current_row, column=current_col, padx=2, pady=2)
         
         # Update focus if needed
-        if self.current_focus >= len(self.emoji_buttons):
-            self.current_focus = len(self.emoji_buttons) - 1
-        self.update_focus()
+        if self.emoji_buttons:
+            if self.current_focus >= len(self.emoji_buttons):
+                self.current_focus = len(self.emoji_buttons) - 1
+            self.update_focus()
 
     def show_context_menu(self, event, emoji, button):
         menu = tk.Menu(self, tearoff=0)
@@ -573,13 +656,26 @@ class EmojiPicker(ctk.CTk):
         self.name_label.configure(text="")
 
     def update_focus(self):
-        for i, button in enumerate(self.emoji_buttons):
-            if i == self.current_focus:
-                button.configure(fg_color=("gray70", "gray30"))
-                self.show_emoji_preview(button.emoji)
-            else:
-                button.configure(fg_color=("gray75", "gray25"))
+        try:
+            # Reset all buttons to default color
+            for i, button in enumerate(self.emoji_buttons):
+                try:
+                    if button.winfo_exists():  # Check if button still exists
+                        button.configure(fg_color=("gray70", "gray30"))
+                except Exception:
+                    continue
 
+            # Set focused button color
+            if 0 <= self.current_focus < len(self.emoji_buttons):
+                try:
+                    button = self.emoji_buttons[self.current_focus]
+                    if button.winfo_exists():  # Check if button still exists
+                        button.configure(fg_color=("gray75", "gray25"))
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"Error updating focus: {e}")
+            
     def next_emoji(self, event):
         if self.emoji_buttons:
             self.current_focus = (self.current_focus + 1) % len(self.emoji_buttons)
@@ -611,8 +707,41 @@ class EmojiPicker(ctk.CTk):
         return False
 
     def on_search(self, *args):
-        search_term = self.search_var.get()
-        self.display_emojis(search_term)
+        search_text = self.search_var.get().lower()
+        
+        # Clear previous results
+        for widget in self.emoji_frame.winfo_children():
+            widget.destroy()
+        
+        if not search_text:
+            self.display_emojis()
+            return
+            
+        # Convert search text to both layouts
+        en_chars = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`"
+        ru_chars = "йцукенгшщзхъфывапролджэячсмитьбюё"
+        
+        en_to_ru = str.maketrans(en_chars, ru_chars)
+        ru_to_en = str.maketrans(ru_chars, en_chars)
+        
+        # Try both layouts
+        search_ru = search_text.translate(en_to_ru) if all(c in en_chars for c in search_text.lower()) else search_text
+        search_en = search_text.translate(ru_to_en) if all(c in ru_chars for c in search_text.lower()) else search_text
+        
+        matching_emojis = []
+        for emoji in self.emojis.get("emojis", []):
+            if isinstance(emoji, str):
+                continue  # Skip if emoji is just a string
+                
+            name = emoji.get("name", "").lower()
+            aliases = [alias.lower() for alias in emoji.get("aliases", [])]
+            
+            # Check both layouts
+            if any(search in name for search in [search_text, search_ru, search_en]) or \
+               any(any(search in alias for search in [search_text, search_ru, search_en]) for alias in aliases):
+                matching_emojis.append(emoji)
+        
+        self.display_emojis(matching_emojis)
         
         # Update focus to first emoji if exists
         if self.emoji_buttons:
@@ -622,6 +751,7 @@ class EmojiPicker(ctk.CTk):
     def clear_search(self):
         self.search_var.set("")
         self.search_entry.focus()
+        self.display_emojis()
 
     def open_add_emoji(self, category=None):
         add_window = AddEmojiWindow(self, category)
@@ -637,6 +767,7 @@ class EmojiPicker(ctk.CTk):
             "start_with_windows": False,
             "minimize_to_tray": True,
             "paste_delay_ms": 100,
+            "default_template": "URL Only",
             "font": {
                 "family": "Segoe UI",
                 "size": 12
@@ -670,112 +801,139 @@ class EmojiPicker(ctk.CTk):
         with open(self.settings_file, 'w', encoding="utf-8") as f:
             json.dump(self.settings, f)
 
-    def show_window(self):
-        def force_foreground():
+    def toggle_window(self):
+        if self.winfo_viewable():
+            if self.settings.get("minimize_to_tray", True):
+                self.withdraw()
+            else:
+                self.iconify()
+            
+            # Store current window for later focus
             try:
-                # Store the current foreground window
                 self.last_active_window = win32gui.GetForegroundWindow()
+            except:
+                self.last_active_window = None
+        else:
+            self.show_window()
+    
+    def show_window(self):
+        try:
+            # Show window
+            self.deiconify()
+            
+            # Position window near cursor first
+            x, y = win32api.GetCursorPos()
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            
+            # Window dimensions
+            window_width = 330
+            window_height = 400
+            
+            # Adjust position to keep window on screen
+            if x + window_width > screen_width:
+                x = screen_width - window_width - 10
+            if y + window_height > screen_height:
+                y = screen_height - window_height - 10
                 
-                # Show window first
-                self.deiconify()
-                self.lift()
-                
-                # Get our window handle
-                hwnd = self.winfo_id()
-                
-                # Try multiple focus methods
+            # Ensure window is not too close to screen edges
+            x = max(10, min(x, screen_width - window_width - 10))
+            y = max(10, min(y, screen_height - window_height - 10))
+            
+            # Set window position immediately
+            self.geometry(f"+{x}+{y}")
+            
+            # Set always on top
+            self.attributes('-topmost', True)
+            self.lift()
+            
+            # Clear search
+            if hasattr(self, 'search_var'):
+                self.search_var.set("")
+            
+            # Force focus with multiple methods
+            def force_focus():
                 try:
-                    # Method 1: Simple Windows API call
-                    win32gui.SetForegroundWindow(hwnd)
-                except:
-                    try:
-                        # Method 2: Simulate Alt key press
-                        win32api.keybd_event(0x12, 0, 0, 0)  # Alt press
-                        win32gui.SetForegroundWindow(hwnd)
-                        win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)  # Alt release
-                    except:
+                    hwnd = self.winfo_id()
+                    
+                    # Try multiple focus methods
+                    methods = [
+                        lambda: win32gui.SetForegroundWindow(hwnd),
+                        lambda: (
+                            win32api.keybd_event(0x12, 0, 0, 0),
+                            win32gui.SetForegroundWindow(hwnd),
+                            win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        ),
+                        lambda: win32gui.BringWindowToTop(hwnd)
+                    ]
+                    
+                    for method in methods:
                         try:
-                            # Method 3: Using mouse click
-                            cursor_pos = win32gui.GetCursorPos()
-                            win32api.SetCursorPos((x + 10, y + 10))
-                            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-                            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-                            win32api.SetCursorPos(cursor_pos)
+                            method()
+                            if win32gui.GetForegroundWindow() == hwnd:
+                                break
                         except:
-                            pass
+                            continue
+                        
+                    self.focus_force()
+                    if hasattr(self, 'search_entry'):
+                        self.search_entry.focus_force()
+                        
+                except Exception as e:
+                    print(f"Focus error: {e}")
+            
+            # Schedule focus forcing
+            self.after(50, force_focus)
+            
+            # Update focus only if we have buttons
+            if hasattr(self, 'emoji_buttons') and self.emoji_buttons:
+                self.current_focus = 0
+                self.after(100, self.update_focus)  # Delay focus update
                 
-                # Force focus using Tkinter methods
-                self.focus_force()
-                self.search_entry.focus_force()
-                
-            except Exception as e:
-                print(f"Focus error: {e}")
-        
-        # Position window near mouse cursor
-        x, y = win32api.GetCursorPos()
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        
-        window_width = 300
-        window_height = 400
-        
-        if x + window_width > screen_width:
-            x = screen_width - window_width
-        if y + window_height > screen_height:
-            y = screen_height - window_height
-        
-        self.geometry(f"+{x}+{y}")
-        
-        # Clear previous search
-        self.search_var.set("")
-        
-        # Force focus with a small delay
-        self.after(10, force_foreground)
-
+        except Exception as e:
+            print(f"Error showing window: {e}")
+            
     def select_emoji(self, emoji):
-        # Get the default template
-        templates = self.settings.get("custom_templates", [])
-        default_template = next(
-            (t for t in templates if t.get("is_default", True)),
-            templates[0] if templates else {"template": "{url}"}
+        # Get the selected template
+        template_name = self.settings.get("default_template", "URL Only")
+        template = next(
+            (t["template"] for t in self.settings.get("custom_templates", []) if t["name"] == template_name),
+            "{url}"  # Default template if not found
         )
         
-        # Format the URL using the template
-        text_to_paste = default_template["template"].replace("{url}", emoji["url"])
+        # Format the emoji text
+        emoji_text = template.replace("{url}", emoji["url"])
         
-        # Hide window
-        self.withdraw()
-        
-        # Copy to clipboard
-        pyperclip.copy(text_to_paste)
-        
-        # Add delay before paste
-        time.sleep(self.settings.get("paste_delay_ms", 100) / 1000)
-        
-        # Restore focus and paste
-        if hasattr(self, 'last_active_window'):
-            try:
-                # Try multiple methods to restore focus
+        try:
+            # Copy to clipboard
+            pyperclip.copy(emoji_text)
+            
+            # Hide window
+            self.withdraw()
+            
+            # Restore previous window focus
+            if hasattr(self, 'last_active_window') and self.last_active_window:
                 try:
-                    # Method 1: Direct Windows API call
                     win32gui.SetForegroundWindow(self.last_active_window)
                 except:
-                    try:
-                        # Method 2: Alt key simulation
-                        win32api.keybd_event(0x12, 0, 0, 0)  # Alt press
-                        win32gui.SetForegroundWindow(self.last_active_window)
-                        win32api.keybd_event(0x12, 0, win32con.KEYEVENTF_KEYUP, 0)  # Alt release
-                    except:
-                        pass
-                
-                # Small delay to ensure focus is restored
-                time.sleep(0.05)
-                keyboard.send("ctrl+v")
-            except Exception as e:
-                print(f"Paste error: {e}")
-                # Fallback paste method
-                keyboard.send("ctrl+v")
-
+                    pass
+            
+            # Wait for focus restoration
+            self.after(50, lambda: self.paste_with_delay())
+            
+        except Exception as e:
+            print(f"Error copying emoji: {e}")
+    
+    def paste_with_delay(self):
+        try:
+            # Get paste delay from settings
+            delay_ms = self.settings.get("paste_delay_ms", 100)
+            
+            # Schedule paste after delay
+            self.after(delay_ms, lambda: keyboard.send('ctrl+v'))
+        except Exception as e:
+            print(f"Error pasting: {e}")
+    
     def open_settings(self, *args):
         settings_window = SettingsWindow(self)
         settings_window.focus()
