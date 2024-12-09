@@ -6,3 +6,4 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.23.0
 pywin32==306
 pystray==0.19.5
+pyperclip==1.9.0
