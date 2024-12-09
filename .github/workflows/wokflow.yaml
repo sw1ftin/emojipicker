@@ -1,4 +1,4 @@
-name: Interpreter Builds
+name: Build binaries
 on: [push]
 
 jobs:
