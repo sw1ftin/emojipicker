@@ -1,5 +1,5 @@
 customtkinter==5.2.1
-Pillow==10.3.0
+Pillow==12.1.1
 keyboard==0.13.5
 requests==2.32.4
 fuzzywuzzy==0.18.0
